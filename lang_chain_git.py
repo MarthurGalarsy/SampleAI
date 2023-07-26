@@ -1,12 +1,12 @@
 import os
 
-os.environ["OPENAI_API_KEY"] = "XXX"
-
+from dotenv import load_dotenv
 from langchain.vectorstores import Chroma
 from langchain.embeddings.openai import OpenAIEmbeddings
 from langchain.indexes import VectorstoreIndexCreator
-
 from langchain.document_loaders import GitLoader
+
+load_dotenv()
 
 clone_url = input("GitHubのURLを入力してください：")
 type = input("プログラムの種類を入力してください（ex：.kt）：")
@@ -35,6 +35,8 @@ while True:
     # 入力が 'exit' の場合、ループを終了
     if user_input.lower() == "exit":
         break
-    
+    if user_input == "":
+        break
+   
     response = index.query(user_input)
     print("回答：", response)

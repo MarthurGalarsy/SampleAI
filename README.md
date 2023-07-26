@@ -2,8 +2,10 @@
 For Sample AI making
 
 ## lang_chain_git.pyの実行結果
+内部ではEmbeddings が使用されているらしい
+これがGPT-4なのかは分からない
 ```
-@Ms-Mac SampleAI % python3 lang_chain_git.py                           
+@Ms-Mac SampleAI % python3 lang_chain_git.py
 GitHubのURLを入力してください：https://github.com/MarthurGalarsy/SampleProduct
 プログラムの種類を入力してください（ex：.kt）：.kt
 ブランチを入力してください：main
