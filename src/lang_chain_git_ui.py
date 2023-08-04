@@ -59,7 +59,10 @@ if read_button:
 
     index = VectorstoreIndexCreator(
         vectorstore_cls=Chroma, # default
-        embedding=OpenAIEmbeddings(disallowed_special=()), #default
+        embedding=OpenAIEmbeddings(
+            disallowed_special=(),
+            chunk_size=1
+        ), #default
     ).from_loaders([loader])
 
     st.session_state["index"] = index
