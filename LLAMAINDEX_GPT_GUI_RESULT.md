@@ -1,4 +1,4 @@
-# LlamaIndex（一部LangChain） + GitLoader + Gpt3.5 + Streamlit
+# LlamaIndex（一部LangChain） + Gpt3.5 + Streamlit
 ## 使用ソース
 * [こちら](./src/llama_index_git_ui.py)
 ## 実行結果
