@@ -35,7 +35,7 @@ conversation_history = []
 history = []
 
 # 画面部分
-st.title("langchain for GitHub in Streamlit")
+st.title("LlamaIndex + langChain + GPT4 AI for GitHub in Streamlit")
 st.caption("by Marthur")
 
 owner = st.text_input("GitHubのOwner")
