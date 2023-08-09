@@ -66,7 +66,7 @@ if read_button:
         verbose =                True,
         concurrent_requests =    10,
     )
-    docs = loader.load_data(branch="main")
+    docs = loader.load_data(branch=branch)
 
     llm_predictor = LLMPredictor(llm=ChatOpenAI(temperature=0, model_name="gpt-4"))
     service_context = ServiceContext.from_defaults(

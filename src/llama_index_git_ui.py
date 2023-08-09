@@ -61,7 +61,7 @@ if read_button:
         concurrent_requests =    10,
     )
 
-    docs = loader.load_data(branch="main")
+    docs = loader.load_data(branch=branch)
     index = GPTVectorStoreIndex.from_documents(docs)
     query_engine = index.as_query_engine()
     st.session_state["query_engine"] = query_engine
