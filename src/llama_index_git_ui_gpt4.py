@@ -10,11 +10,16 @@ from llama_index import (
     GPTVectorStoreIndex,
     LLMPredictor,
     ServiceContext,
+    SimpleDirectoryReader,
 )
 from llama_hub.github_repo import GithubRepositoryReader, GithubClient
 from langchain.schema import HumanMessage
 from langchain.schema import AIMessage
 from langchain.chat_models import ChatOpenAI
+from langchain.document_loaders import GitLoader
+from langchain.indexes import VectorstoreIndexCreator
+from langchain.vectorstores import Chroma
+from langchain.embeddings.openai import OpenAIEmbeddings
 
 load_dotenv()
 openai.api_key = os.getenv("OPENAI_API_KEY")
@@ -35,40 +40,115 @@ conversation_history = []
 history = []
 
 # 画面部分
-st.title("LlamaIndex + langChain + GPT4 AI for GitHub in Streamlit")
+st.title("LlamaIndex + LangChain + Local + GPT4 AI for GitHub in Streamlit")
 st.caption("by Marthur")
 
-owner = st.text_input("GitHubのOwner")
-repository = st.text_input("GitHubのRepository")
-type = st.text_input("プログラムの種類（ex：.kt）")
-targetDir = st.text_input("対象ディレクトリ")
-branch = st.text_input("ブランチ")
-read_button = st.button("GitHub読み込み")
-model_list = ["Git", "GPT"]
-model_selector = st.radio("モデル切り替え", model_list)
-if model_selector == "Git":
+place_type = ["Git(LlamaIndex)", "Git(LangChain)","Local"]
+place_selector = st.radio("読み込み方切り替え", place_type)
+if place_selector == "Git(LlamaIndex)" :
+    owner = st.text_input("GitHubのOwner")
+    repository = st.text_input("GitHubのRepository")
+    type = st.text_input("プログラムの種類（ex：.kt）")
+    targetDir = st.text_input("対象ディレクトリ")
+    branch = st.text_input("ブランチ")
+    git_read_button = st.button("GitHub読み込み")
+elif place_selector == "Git(LangChain)" :
+    clone_url = st.text_input("GitHubのURL")
+    type = st.text_input("プログラムの種類（ex：.kt）")
+    branch = st.text_input("ブランチ")
+    repo_path = "./temp"
+    git_read_button = st.button("GitHub読み込み")
+elif place_selector == "Local" :
+    targetDir = st.text_input("対象ディレクトリ")
+    type = st.text_input("プログラムの種類（ex：.kt）")
+    local_read_button = st.button("ローカルファイル読み込み")
+
+target_type = ["Repository", "SingleFile"]
+target_type_selector = st.radio("対象切り替え", target_type)
+if target_type_selector == "Repository":
     git_user_input = st.text_input("質問")
     git_send_button = st.button("送信")
-elif model_selector == "GPT":
+elif target_type_selector == "SingleFile":
     git_user_input = st.text_input("対象ファイル名")
     gpt_user_input = st.text_input("質問")
     gpt_send_button = st.button("送信")
 
-# GitHub読み込みボタン押下処理
-if read_button:
-    read_button = False
+# GitHub読み込みボタン(LlamaIndex)押下処理
+if place_selector == "Git(LlamaIndex)" and git_read_button:
+    git_read_button = False
+
     loader = GithubRepositoryReader(
         github_client,
         owner =                  owner,
         repo =                   repository,
         filter_directories =     ([targetDir], GithubRepositoryReader.FilterType.INCLUDE),
-        filter_file_extensions = ([type], GithubRepositoryReader.FilterType.INCLUDE),
+        filter_file_extensions = (type.split(","), GithubRepositoryReader.FilterType.INCLUDE),
         verbose =                True,
         concurrent_requests =    10,
+        use_parser =             True,
     )
     docs = loader.load_data(branch=branch)
 
-    llm_predictor = LLMPredictor(llm=ChatOpenAI(temperature=0, model_name="gpt-4"))
+    llm_predictor = LLMPredictor(llm=ChatOpenAI(temperature=0, model="gpt-4"))
+    service_context = ServiceContext.from_defaults(
+        llm_predictor=llm_predictor
+    )
+    index = GPTVectorStoreIndex.from_documents(documents=docs, service_context=service_context)
+    query_engine = index.as_query_engine(service_context=service_context)
+    st.session_state["query_engine"] = query_engine
+
+    if query_engine: 
+        memory.chat_memory.add_ai_message("読み込みました")
+
+        # チャット履歴（HumanMessageやAIMessageなど）の読み込み
+        try:
+            history = memory.load_memory_variables({})["history"]
+        except Exception as e:
+            st.error(e)
+
+# GitHub読み込みボタン(LangChain)押下処理
+if place_selector == "Git(LangChain)" and git_read_button:
+    git_read_button = False
+    if os.path.exists(repo_path):
+        clone_url = None
+
+    loader = GitLoader(
+        clone_url=clone_url,
+        branch=branch,
+        repo_path=repo_path,
+        file_filter=lambda file_path: file_path.endswith(type),
+    )
+    index = VectorstoreIndexCreator(
+        vectorstore_cls=Chroma, # default
+        embedding=OpenAIEmbeddings(
+            disallowed_special=(),
+            chunk_size=1
+        ), #default
+    ).from_loaders([loader])
+
+    st.session_state["index"] = index
+    
+    if index :
+        memory.chat_memory.add_ai_message("読み込みました")
+
+        # チャット履歴（HumanMessageやAIMessageなど）の読み込み
+        try:
+            history = memory.load_memory_variables({})["history"]
+        except Exception as e:
+            st.error(e)
+
+# ローカルファイル読み込みボタン押下処理
+if place_selector == "Local" and local_read_button:
+    local_read_button = False
+    docs = SimpleDirectoryReader(
+        input_dir = targetDir,
+        recursive = True,
+        required_exts = type.split(","),
+    ).load_data()
+    for doc in docs:
+        print(doc)
+
+    llm_predictor = LLMPredictor(llm=ChatOpenAI(temperature=0, model="gpt-4"))
     service_context = ServiceContext.from_defaults(
         llm_predictor=llm_predictor
     )
@@ -86,7 +166,7 @@ if read_button:
             st.error(e)
 
 # Gitで送信ボタン押下処理
-if model_selector == "Git" and git_send_button :
+if target_type_selector == "Repository" and git_send_button :
     git_send_button = False
     memory.chat_memory.add_user_message(git_user_input)
     query_engine = st.session_state["query_engine"]
@@ -103,7 +183,7 @@ if model_selector == "Git" and git_send_button :
         st.error(e)
 
 # Gptで送信ボタン押下処理
-if model_selector == "GPT" and gpt_send_button :
+if target_type_selector == "SingleFile" and gpt_send_button :
     gpt_send_button = False
     git_user_input += "のソースコードを表示してください"
     memory.chat_memory.add_user_message(git_user_input)
