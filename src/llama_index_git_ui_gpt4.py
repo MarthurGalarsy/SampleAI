@@ -43,7 +43,7 @@ history = []
 st.title("LlamaIndex + LangChain + Local + GPT4 AI for GitHub in Streamlit")
 st.caption("by Marthur")
 
-place_type = ["Git(LlamaIndex)", "Git(LangChain)","Local"]
+place_type = ["Git(LlamaIndex)", "Git(LangChain)","Local(LlamaIndex)"]
 place_selector = st.radio("読み込み方切り替え", place_type)
 if place_selector == "Git(LlamaIndex)" :
     owner = st.text_input("GitHubのOwner")
@@ -58,7 +58,7 @@ elif place_selector == "Git(LangChain)" :
     branch = st.text_input("ブランチ")
     repo_path = "./temp"
     git_read_button = st.button("GitHub読み込み")
-elif place_selector == "Local" :
+elif place_selector == "Local(LlamaIndex)" :
     targetDir = st.text_input("対象ディレクトリ")
     type = st.text_input("プログラムの種類（ex：.kt）")
     local_read_button = st.button("ローカルファイル読み込み")
@@ -89,7 +89,7 @@ if place_selector == "Git(LlamaIndex)" and git_read_button:
     )
     docs = loader.load_data(branch=branch)
 
-    llm_predictor = LLMPredictor(llm=ChatOpenAI(temperature=0, model="gpt-4"))
+    llm_predictor = LLMPredictor(llm=ChatOpenAI(temperature=0, model_name="gpt-4"))
     service_context = ServiceContext.from_defaults(
         llm_predictor=llm_predictor
     )
@@ -138,17 +138,15 @@ if place_selector == "Git(LangChain)" and git_read_button:
             st.error(e)
 
 # ローカルファイル読み込みボタン押下処理
-if place_selector == "Local" and local_read_button:
+if place_selector == "Local(LlamaIndex)" and local_read_button:
     local_read_button = False
     docs = SimpleDirectoryReader(
         input_dir = targetDir,
         recursive = True,
         required_exts = type.split(","),
     ).load_data()
-    for doc in docs:
-        print(doc)
 
-    llm_predictor = LLMPredictor(llm=ChatOpenAI(temperature=0, model="gpt-4"))
+    llm_predictor = LLMPredictor(llm=ChatOpenAI(temperature=0, model_name="gpt-4"))
     service_context = ServiceContext.from_defaults(
         llm_predictor=llm_predictor
     )
@@ -165,14 +163,19 @@ if place_selector == "Local" and local_read_button:
         except Exception as e:
             st.error(e)
 
-# Gitで送信ボタン押下処理
+# Repositoryで送信ボタン押下処理
 if target_type_selector == "Repository" and git_send_button :
     git_send_button = False
     memory.chat_memory.add_user_message(git_user_input)
-    query_engine = st.session_state["query_engine"]
+    if place_selector == "Git(LangChain)":
+        index = st.session_state["index"]
+        response = index.query(git_user_input)
+        response = response.replace("mermaid", "")
+    else:
+        query_engine = st.session_state["query_engine"]
+        response = str(query_engine.query(git_user_input).response)
+        response = response.replace("mermaid", "")
 
-    response = str(query_engine.query(git_user_input).response)
-    response = response.replace("mermaid", "")
     memory.chat_memory.add_ai_message(response)
     st.session_state["memory"] = memory
 
@@ -182,14 +185,19 @@ if target_type_selector == "Repository" and git_send_button :
     except Exception as e:
         st.error(e)
 
-# Gptで送信ボタン押下処理
+# SingleFileで送信ボタン押下処理
 if target_type_selector == "SingleFile" and gpt_send_button :
     gpt_send_button = False
     git_user_input += "のソースコードを表示してください"
     memory.chat_memory.add_user_message(git_user_input)
-    query_engine = st.session_state["query_engine"]
 
-    code_res = query_engine.query(git_user_input).response
+    if place_selector == "Git(LangChain)":
+        index = st.session_state["index"]
+        code_res = index.query(git_user_input)
+    else:
+        query_engine = st.session_state["query_engine"]
+        code_res = query_engine.query(git_user_input).response
+
     memory.chat_memory.add_ai_message(code_res)
 
     prompt = "下記のコードがあります。\n下記のコードに対して" + gpt_user_input + "\n" + code_res
