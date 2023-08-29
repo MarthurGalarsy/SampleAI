@@ -1,1 +1,6 @@
 .env
+index_context
+./temp
+./temp/*
+./src/temp
+./src/temp/*
