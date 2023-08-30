@@ -148,30 +148,30 @@ if local_read_button:
         path = extract_java_info(source)
         file_list.append(Document(text = path))
 
-        if not os.path.exists(index_directory + "/source/" + path):
-            source_index = GPTVectorStoreIndex.from_documents(documents=[Document(text = source)], service_context=service_context)
-            source_index.storage_context.persist(index_directory + "/source/" + path)
-        else:
-            storage_context_src = StorageContext.from_defaults(
-                docstore=SimpleDocumentStore.from_persist_dir(persist_dir=index_directory + "/source/" + path),
-                vector_store=SimpleVectorStore.from_persist_dir(persist_dir=index_directory + "/source/" + path),
-                index_store=SimpleIndexStore.from_persist_dir(persist_dir=index_directory + "/source/" + path),
-            )
-            source_index = load_index_from_storage(storage_context_src, service_context=service_context)
-        source_query_engine = source_index.as_query_engine(service_context=service_context)
+        # if not os.path.exists(index_directory + "/source/" + path):
+        #     source_index = GPTVectorStoreIndex.from_documents(documents=[Document(text = source)], service_context=service_context)
+        #     source_index.storage_context.persist(index_directory + "/source/" + path)
+        # else:
+        #     storage_context_src = StorageContext.from_defaults(
+        #         docstore=SimpleDocumentStore.from_persist_dir(persist_dir=index_directory + "/source/" + path),
+        #         vector_store=SimpleVectorStore.from_persist_dir(persist_dir=index_directory + "/source/" + path),
+        #         index_store=SimpleIndexStore.from_persist_dir(persist_dir=index_directory + "/source/" + path),
+        #     )
+        #     source_index = load_index_from_storage(storage_context_src, service_context=service_context)
+        # source_query_engine = source_index.as_query_engine(service_context=service_context)
 
-        class path_class(BaseTool):
-            name = path
-            description = path + "のソースコードを取得、表示するために使用します。"
+        # class path_class(BaseTool):
+        #     name = path
+        #     description = path + "のソースコードを取得、表示するために使用します。"
 
-            def _run(self, query: str) -> str:
-                """Use the tool."""
-                return source_query_engine.query(query).response
+        #     def _run(self, query: str) -> str:
+        #         """Use the tool."""
+        #         return source_query_engine.query(query).response
     
-            async def _arun(self, query: str) -> str:
-                """Use the tool asynchronously."""
-                raise NotImplementedError("BingSearchRun does not support async")
-        tools.append(path_class())
+        #     async def _arun(self, query: str) -> str:
+        #         """Use the tool asynchronously."""
+        #         raise NotImplementedError("BingSearchRun does not support async")
+        # tools.append(path_class())
 
     if not os.path.exists(index_directory + "/filelist"):
         file_list_index = GPTVectorStoreIndex.from_documents(documents=file_list, service_context=service_context)
