@@ -6,7 +6,8 @@ import re
 from dotenv import load_dotenv
 from streamlit_chat import message
 from langchain.agents import (
-    initialize_agent
+    initialize_agent,
+    load_tools
 )
 from langchain.chat_models import ChatOpenAI
 from langchain.tools.base import (
@@ -37,6 +38,19 @@ openai.api_key = os.getenv("OPENAI_API_KEY")
 google_api_key = os.getenv("GOOGLE_API_KEY")
 github_client = GithubClient(os.getenv("GITHUB_TOKEN"))
 
+def get_input() -> str:
+    print("Insert your text. Enter 'q' or press Ctrl-D (or Ctrl-Z on Windows) to end.")
+    contents = []
+    while True:
+        try:
+            line = input()
+        except EOFError:
+            break
+        if line == "q":
+            break
+        contents.append(line)
+    return "\n".join(contents)
+
 def ensure_directory_exists(directory):
     if not os.path.exists(directory):
         os.makedirs(directory)
@@ -60,7 +74,9 @@ def extract_kotlin_info(kotlin_source):
     else:
         return None
 
-llm = ChatOpenAI(temperature=0, model_name="gpt-4")
+llm4 = ChatOpenAI(temperature=0.5, model_name="gpt-4")
+llm3_5 = ChatOpenAI(temperature=0.1, model_name="gpt-3.5-turbo-16k")
+
 search = GoogleSearchAPIWrapper(google_api_key = google_api_key)
 index_directory = "./index_context"
 
@@ -104,13 +120,14 @@ if git_read_button:
 
     ensure_directory_exists(index_directory)
 
-    llm_predictor = LLMPredictor(llm=llm)
+    llm_predictor = LLMPredictor(llm=llm3_5)
     service_context = ServiceContext.from_defaults(
         llm_predictor=llm_predictor
     )
 
     tools = [
         CustomSearchTool(),
+        load_tools(["human"], input_func=get_input)[0]
     ]
 
     loader = GithubRepositoryReader(
@@ -207,7 +224,7 @@ if git_read_button:
             raise NotImplementedError("BingSearchRun does not support async")
     tools.append(FileListClass())
 
-    agent = initialize_agent(tools, llm, agent="zero-shot-react-description", memory=memory, verbose=True)
+    agent = initialize_agent(tools, llm4, agent="zero-shot-react-description", memory=memory, verbose=True)
     agent.save_agent(index_directory + "/" + repository + "/agent.json")
     st.session_state["agent"] = agent
 

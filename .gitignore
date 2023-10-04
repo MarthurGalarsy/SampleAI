@@ -1,5 +1,6 @@
 .env
 index_context
+levica_context
 ./temp
 ./temp/*
 ./src/temp

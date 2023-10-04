@@ -61,9 +61,11 @@ def extract_java_info(java_source):
     else:
         return None
 
-llm = ChatOpenAI(temperature=0, model_name="gpt-4")
+llm4 = ChatOpenAI(temperature=0.5, model_name="gpt-4")
+llm3_5 = ChatOpenAI(temperature=0.1, model_name="gpt-3.5-turbo-16k")
+
 search = GoogleSearchAPIWrapper(google_api_key = google_api_key)
-index_directory = "./index_context"
+index_directory = "./levica_context"
 
 # セッション内に保存されたチャット履歴のメモリの取得
 try:
@@ -102,7 +104,7 @@ if local_read_button:
 
     ensure_directory_exists(index_directory)
 
-    llm_predictor = LLMPredictor(llm=llm)
+    llm_predictor = LLMPredictor(llm=llm3_5)
     service_context = ServiceContext.from_defaults(
         llm_predictor=llm_predictor
     )
@@ -148,30 +150,30 @@ if local_read_button:
         path = extract_java_info(source)
         file_list.append(Document(text = path))
 
-        # if not os.path.exists(index_directory + "/source/" + path):
-        #     source_index = GPTVectorStoreIndex.from_documents(documents=[Document(text = source)], service_context=service_context)
-        #     source_index.storage_context.persist(index_directory + "/source/" + path)
-        # else:
-        #     storage_context_src = StorageContext.from_defaults(
-        #         docstore=SimpleDocumentStore.from_persist_dir(persist_dir=index_directory + "/source/" + path),
-        #         vector_store=SimpleVectorStore.from_persist_dir(persist_dir=index_directory + "/source/" + path),
-        #         index_store=SimpleIndexStore.from_persist_dir(persist_dir=index_directory + "/source/" + path),
-        #     )
-        #     source_index = load_index_from_storage(storage_context_src, service_context=service_context)
-        # source_query_engine = source_index.as_query_engine(service_context=service_context)
+        if not os.path.exists(index_directory + "/source/" + path):
+            source_index = GPTVectorStoreIndex.from_documents(documents=[Document(text = source)], service_context=service_context)
+            source_index.storage_context.persist(index_directory + "/source/" + path)
+        else:
+            storage_context_src = StorageContext.from_defaults(
+                docstore=SimpleDocumentStore.from_persist_dir(persist_dir=index_directory + "/source/" + path),
+                vector_store=SimpleVectorStore.from_persist_dir(persist_dir=index_directory + "/source/" + path),
+                index_store=SimpleIndexStore.from_persist_dir(persist_dir=index_directory + "/source/" + path),
+            )
+            source_index = load_index_from_storage(storage_context_src, service_context=service_context)
+        source_query_engine = source_index.as_query_engine(service_context=service_context)
 
-        # class path_class(BaseTool):
-        #     name = path
-        #     description = path + "のソースコードを取得、表示するために使用します。"
+        class path_class(BaseTool):
+            name = path
+            description = path + "のソースコードを取得、表示するために使用します。"
 
-        #     def _run(self, query: str) -> str:
-        #         """Use the tool."""
-        #         return source_query_engine.query(query).response
+            def _run(self, query: str) -> str:
+                """Use the tool."""
+                return source_query_engine.query(query).response
     
-        #     async def _arun(self, query: str) -> str:
-        #         """Use the tool asynchronously."""
-        #         raise NotImplementedError("BingSearchRun does not support async")
-        # tools.append(path_class())
+            async def _arun(self, query: str) -> str:
+                """Use the tool asynchronously."""
+                raise NotImplementedError("BingSearchRun does not support async")
+        tools.append(path_class())
 
     if not os.path.exists(index_directory + "/filelist"):
         file_list_index = GPTVectorStoreIndex.from_documents(documents=file_list, service_context=service_context)
@@ -198,7 +200,7 @@ if local_read_button:
             raise NotImplementedError("BingSearchRun does not support async")
     tools.append(FileListClass())
 
-    agent = initialize_agent(tools, llm, agent="zero-shot-react-description", memory=memory, verbose=True)
+    agent = initialize_agent(tools, llm4, agent="zero-shot-react-description", memory=memory, verbose=True)
     agent.save_agent(index_directory + "/agent.json")
     st.session_state["agent"] = agent
 
