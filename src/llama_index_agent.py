@@ -5,19 +5,27 @@ import re
 
 from dotenv import load_dotenv
 from streamlit_chat import message
+
+from langchain import (
+    GoogleSearchAPIWrapper,
+    LLMChain
+)
+from langchain.memory import ConversationBufferMemory
+from langchain.schema import (
+    HumanMessage,
+    AIMessage,
+)
+
+from langchain.agents.agent_types import AgentType
 from langchain.agents import (
     initialize_agent,
-    load_tools
+    load_tools,
+    ZeroShotAgent,
+    AgentExecutor
 )
 from langchain.chat_models import ChatOpenAI
 from langchain.tools.base import (
     BaseTool,
-)
-from langchain import GoogleSearchAPIWrapper
-from langchain.memory import ConversationBufferMemory
-from langchain.schema import (
-    HumanMessage,
-    AIMessage
 )
 
 from llama_hub.github_repo import GithubRepositoryReader, GithubClient
@@ -224,11 +232,26 @@ if git_read_button:
             raise NotImplementedError("BingSearchRun does not support async")
     tools.append(FileListClass())
 
-    agent = initialize_agent(tools, llm4, agent="zero-shot-react-description", memory=memory, verbose=True)
-    agent.save_agent(index_directory + "/" + repository + "/agent.json")
-    st.session_state["agent"] = agent
+    prompt = ZeroShotAgent.create_prompt(
+        tools=tools,
+        prefix="""あなたはGitHubやKotlinに詳しいシニアエンジニアです。
+        次の質問にできる限り答えてください。次のツールにアクセスできます:""",
+#        suffix="""必ずFINAL FANTASY Tacticsのアグリアスの言葉遣いで回答してください。
+        suffix="""必ずFINAL FANTASY XIIIのライトニングの言葉遣いで回答してください。
+        ただし、分からないことは人間に質問してください。
+        質問内容：{question}
+        {agent_scratchpad}
+        """,
+        input_variables=["question", "agent_scratchpad"]
+    )
+    llm_chain = LLMChain(llm=llm4, prompt=prompt)
+    agent = ZeroShotAgent(llm_chain=llm_chain, tools=tools)
+    agent_executor = AgentExecutor.from_agent_and_tools(agent=agent, tools=tools, verbose=True)
 
-    if agent: 
+    agent_executor.save_agent(index_directory + "/" + repository + "/agent.json")
+    st.session_state["agent_executor"] = agent_executor
+
+    if agent_executor: 
         memory.chat_memory.add_ai_message("読み込みました")
 
         # チャット履歴（HumanMessageやAIMessageなど）の読み込み
@@ -239,10 +262,10 @@ if git_read_button:
 
 if git_send_button :
     git_send_button = False
-    agent = st.session_state["agent"]
+    agent_executor = st.session_state["agent_executor"]
     memory.chat_memory.add_user_message(git_user_input)
 
-    response = agent.run(git_user_input)
+    response = agent_executor.run(git_user_input)
     response = response.replace("mermaid", "")
 
     memory.chat_memory.add_ai_message(response)
