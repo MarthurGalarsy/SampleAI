@@ -1,7 +1,6 @@
 import os
 import streamlit as st
 import openai
-import re
 
 from dotenv import load_dotenv
 from streamlit_chat import message
@@ -15,8 +14,6 @@ from langchain.schema import (
     HumanMessage,
     AIMessage,
 )
-
-from langchain.agents.agent_types import AgentType
 from langchain.agents import (
     load_tools,
     ZeroShotAgent,
@@ -27,7 +24,7 @@ from langchain.tools.base import (
     BaseTool,
 )
 
-from llama_hub.github_repo import GithubRepositoryReader, GithubClient
+from llama_hub.github_repo import GithubClient
 from llama_index import (
     GPTVectorStoreIndex,
     LLMPredictor,
