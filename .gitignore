@@ -1,6 +1,8 @@
 .env
 index_context
 levica_context
+web_page_context
+temp
 ./temp
 ./temp/*
 ./src/temp
