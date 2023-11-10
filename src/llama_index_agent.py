@@ -79,7 +79,7 @@ def extract_kotlin_info(kotlin_source):
     else:
         return None
 
-llm4 = ChatOpenAI(temperature=0.5, model_name="gpt-4")
+llm4 = ChatOpenAI(temperature=0.5, model_name="gpt-4-1106-preview")
 llm3_5 = ChatOpenAI(temperature=0.1, model_name="gpt-3.5-turbo-16k")
 
 search = GoogleSearchAPIWrapper(google_api_key = google_api_key)
